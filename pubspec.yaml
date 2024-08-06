@@ -1,0 +1,35 @@
+name: light_waves
+description: "一款 Cupertino Design 鸣潮抽卡分析应用。"
+publish_to: 'none' 
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.3 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  dio: ^5.5.0+1
+  cached_network_image: ^3.4.0
+  hive_flutter: ^1.1.0
+  path_provider: ^2.1.4
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  # 生成图标
+  flutter_launcher_icons: "^0.13.1"
+  
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+
+# 生成图标配置
+flutter_launcher_icons:
+  android: "launcher_icon"
+  image_path: "assets/logo.png"
+  min_sdk_android: 21
