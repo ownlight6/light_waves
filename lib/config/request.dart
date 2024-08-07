@@ -72,6 +72,23 @@ class WikiRequest {
       final options = Options(
         headers: {
           'Content-Type': 'application/json',
+          'accept': 'application/json, text/plain, */*',
+          'accept-encoding': 'gzip, deflate, br, zstd',
+          'accept-language': 'zh-CN,zh;q=0.9',
+          'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+          'origin': 'http://wiki.kurobbs.com',
+          'priority': 'u=1, i',
+          'referer': 'http://wiki.kurobbs.com/',
+          'sec-ch-ua':
+              '"Not)A;Brand";v="99", "Google Chrome";v="127", "Chromium";v="127"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"macOS"',
+          'sec-fetch-dest': 'empty',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-site': 'cross-site',
+          'source': 'h5',
+          'user-agent':
+              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
           ...?headers,
         },
       );
