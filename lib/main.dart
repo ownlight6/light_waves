@@ -1,14 +1,38 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:light_waves/config/hive.dart';
 import 'package:light_waves/pages/home/home_page.dart';
+import 'package:light_waves/pages/setting/about/about_page.dart';
+import 'package:light_waves/pages/setting/gacha/gacha_page.dart';
+import 'package:light_waves/pages/setting/get/get_page.dart';
 import 'package:light_waves/pages/setting/setting_page.dart';
 import 'package:light_waves/provider/theme.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isWindows) {
+    await windowManager.ensureInitialized();
+    WindowOptions windowOptions = const WindowOptions(
+      size: Size(400, 800),
+      minimumSize: Size(400, 800),
+      maximumSize: Size(400, 800),
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.normal,
+      title: 'LIGHT WAVE 鸣潮',
+      alwaysOnTop: true,
+    );
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -53,6 +77,9 @@ class MyApp extends StatelessWidget {
       routes: {
         '/home_page': (context) => const HomePage(),
         '/setting_page': (context) => const SettingPage(),
+        '/gacha_page': (context) => const GachaPage(),
+        '/about_page': (context) => const AboutPage(),
+        '/get_page': (context) => const GetPage(),
       },
     );
   }

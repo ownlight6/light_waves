@@ -53,7 +53,7 @@ class _HomePageState extends State<HomePage> {
         });
         flag = 0;
         level4 = [];
-        print('${_list[i]['name']} ${_list[i]['resourceId']}');
+        debugPrint('${_list[i]['name']} ${_list[i]['resourceId']}');
       }
     }
     _gachaList.add({
