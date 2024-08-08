@@ -47,3 +47,6 @@ final Map defaultRequest = {
   "languageCode": "zh-Hans",
   "recordId": ""
 };
+
+// 常驻五星角色ID
+final List defaultFiveStar = [1405, 1301, 1203, 1503, 1104];

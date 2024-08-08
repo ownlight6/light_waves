@@ -64,14 +64,14 @@ class AboutPage extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 5),
-                      SelectableText(
+                      Text(
                         "交流群：${WaveConfig.qqGroup}",
                         style: TextStyle(
                           fontSize: 14,
                         ),
                       ),
                       SizedBox(height: 5),
-                      SelectableText(
+                      Text(
                         "LOGO来源：https://www.pixiv.net/artworks/121032720（画师：DemonKing13）",
                         style: TextStyle(
                           fontSize: 14,

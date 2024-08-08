@@ -7,6 +7,7 @@ import 'package:light_waves/config/api.dart';
 import 'package:light_waves/config/config.dart';
 import 'package:light_waves/config/hive.dart';
 import 'package:light_waves/constant/common.dart';
+import 'package:light_waves/pages/home/analysis_card.dart';
 import 'package:light_waves/provider/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -23,19 +24,71 @@ class _HomePageState extends State<HomePage> {
   Map<String, dynamic> _gachaSetting = {...gachaSetting};
   // 请求参数
   Map<String, dynamic> _params = {...defaultRequest};
+  // 未处理的抽卡记录
   List _list = [];
+  // 暂存每个池子处理后的抽卡记录
   List _gachaList = [];
+  // tab选择器
   int _selected = 1;
+  // 处理后的抽卡数据
   final List _allList = [];
-  final List _others = [1405, 1301, 1203, 1503, 1104];
+  // 图片
   List imgs = [];
-  // 主题
+  // 总体分析数据
+  final Map _totalData = {
+    'num': 0, // 总抽数
+    'num_c': 0, // 限定池抽数
+    'num_w': 0, // 专武池抽数
+    'num_n': 0, // 常驻池抽数
+    'level5_c': 0, // 限定池五星角色数量
+    'level5_c_up': 0, // 限定池五星UP数量
+    'level5_c_normal': 0, // 限定池五星常驻数量
+    'level5_w': 0, // 专武池五星武器数量 - 不歪
+    'level5_n': 0, // 常驻池五星数量
+  };
+
+  // 分析抽卡数据
+  void _analysisData() {
+    for (int i = 0; i < _allList.length; i++) {
+      List pool = _allList[i]['list'];
+      for (int j = 0; j < pool.length; j++) {
+        Map stage = pool[j];
+        _totalData['num'] += stage['flag'];
+        if (i == 0) {
+          // 限定池
+          _totalData['num_c'] += stage['flag'];
+          if (stage['qualityLevel'] == 5) {
+            if (defaultFiveStar.contains(stage['resourceId'])) {
+              _totalData['level5_c_normal']++;
+            } else {
+              _totalData['level5_c_up']++;
+            }
+            _totalData['level5_c']++;
+          }
+        } else if (i == 1) {
+          // 专武池
+          _totalData['num_w'] += stage['flag'];
+          if (stage['qualityLevel'] == 5) {
+            _totalData['level5_w']++;
+          }
+        } else {
+          // 常驻池
+          _totalData['num_n'] += stage['flag'];
+          if (stage['qualityLevel'] == 5) {
+            _totalData['level5_n']++;
+          }
+        }
+      }
+    }
+    debugPrint(_totalData.toString());
+  }
 
   // 是否有抽卡设置
   bool showGachaSetting() {
     return !_gachaSetting.values.contains('');
   }
 
+  //  处理抽卡记录
   void _getGachaData() async {
     int flag = 0;
     List level4 = [];
@@ -62,6 +115,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  // 获取抽卡记录
   Future _getData() async {
     final Map data = await Wave.gachaRecord(_params);
     if (data['message'] == 'success') {
@@ -72,6 +126,7 @@ class _HomePageState extends State<HomePage> {
     _getGachaData();
   }
 
+  // 处理得到所有抽卡数据
   void _getAllData() async {
     for (int i = 0; i < cardPoolType.length; i++) {
       _params['cardPoolType'] = cardPoolType[i]['id'];
@@ -81,8 +136,11 @@ class _HomePageState extends State<HomePage> {
         'list': _gachaList,
       });
     }
+    // 分析抽卡数据
+    _analysisData();
   }
 
+  //  渲染进度条
   Widget renderProgress(int flag) {
     return Expanded(
       child: Container(
@@ -98,6 +156,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // 获取进度条颜色
   CupertinoDynamicColor getColor(int flag) {
     if (flag >= 0 && flag < 50) {
       return CupertinoColors.activeGreen;
@@ -108,19 +167,23 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // 获取图片
   String? getImg(String name) {
     List list = imgs.where((ele) => ele['name'] == name).toList();
     return list.isNotEmpty ? list[0]['url'] : null;
   }
 
+  // 是否是角色
   bool isCharacter() {
     return [1, 3, 5, 6].contains(_selected);
   }
 
+  // 是否为武器
   bool isWeapon() {
     return [2, 4].contains(_selected);
   }
 
+  // 渲染抽卡列表
   List<Widget> renderGachaCate() {
     List<Widget> list = [];
     for (int i = 0; i < _allList.length; i++) {
@@ -182,6 +245,7 @@ class _HomePageState extends State<HomePage> {
     return list;
   }
 
+  // 格式化抽卡时间
   String getGachaTime(String time) {
     String nowYear = DateTime.now().toString().split('-')[0];
     String gachaYear = time.split('-')[0];
@@ -192,6 +256,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // 获取tab items
   Map<int, Widget> renderGachaType() {
     Map<int, Widget> map = {};
     for (int i = 0; i < cardPoolType.length; i++) {
@@ -206,9 +271,10 @@ class _HomePageState extends State<HomePage> {
     return map;
   }
 
+  // 渲染【欧】【歪】标识
   List<Widget> renderOtherTag(Map ele) {
     List<int> other = [];
-    if (_others.contains(ele['resourceId']) && _selected == 1) {
+    if (defaultFiveStar.contains(ele['resourceId']) && _selected == 1) {
       other.add(1);
     }
     if (ele['flag'] <= 10 && ele['qualityLevel'] > -1) {
@@ -248,6 +314,7 @@ class _HomePageState extends State<HomePage> {
     }).toList();
   }
 
+  // 获取角色数据
   Future _getCharacterInfo() async {
     final Map data = await Wave.wikiInfo({
       "catalogueId": 1105,
@@ -260,6 +327,7 @@ class _HomePageState extends State<HomePage> {
     imgs.addAll(list);
   }
 
+  // 获取武器数据
   Future _getWeaponInfo() async {
     final Map data = await Wave.wikiInfo({
       "catalogueId": 1106,
@@ -322,10 +390,15 @@ class _HomePageState extends State<HomePage> {
       ),
       child: showGachaSetting()
           ? _allList.isNotEmpty
-              ? ListView(
+              ? Column(
                   children: [
+                    AnalysisCard(
+                      data: _totalData,
+                      uid: _params['playerId'],
+                      index: _selected,
+                    ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
                       child: CupertinoSlidingSegmentedControl(
                         groupValue: _selected,
                         thumbColor: CupertinoColors.activeBlue,
@@ -337,7 +410,13 @@ class _HomePageState extends State<HomePage> {
                         },
                       ),
                     ),
-                    renderGachaCate()[_selected - 1],
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          renderGachaCate()[_selected - 1],
+                        ],
+                      ),
+                    ),
                   ],
                 )
               : const Center(
