@@ -107,9 +107,8 @@ class _AnalysisCardState extends State<AnalysisCard> {
                       CupertinoListTile(
                         title: const Text('不歪概率'),
                         additionalInfo: Text(
-                          ((widget.data['level5_c_up'] -
-                                          widget.data['level5_c_normal']) /
-                                      widget.data['level5_c_up'] *
+                          ((widget.data['need_w'] - widget.data['need_n']) /
+                                      widget.data['need_w'] *
                                       100)
                                   .toStringAsFixed(2) +
                               '%',
