@@ -45,12 +45,15 @@ class _HomePageState extends State<HomePage> {
     'level5_c_normal': 0, // 限定池五星常驻数量
     'level5_w': 0, // 专武池五星武器数量 - 不歪
     'level5_n': 0, // 常驻池五星数量
+    'need_w': 0, // 想要抽到的限定数量
+    'need_n': 0, // 限定歪的次数
   };
 
   // 分析抽卡数据
   void _analysisData() {
     for (int i = 0; i < _allList.length; i++) {
       List pool = _allList[i]['list'];
+      int needFlag = 0;
       for (int j = 0; j < pool.length; j++) {
         Map stage = pool[j];
         _totalData['num'] += stage['flag'];
@@ -60,8 +63,14 @@ class _HomePageState extends State<HomePage> {
           if (stage['qualityLevel'] == 5) {
             if (defaultFiveStar.contains(stage['resourceId'])) {
               _totalData['level5_c_normal']++;
+              _totalData['need_n']++;
+              needFlag++;
             } else {
               _totalData['level5_c_up']++;
+              _totalData['need_w']++;
+              if (needFlag > 0) {
+                needFlag--;
+              }
             }
             _totalData['level5_c']++;
           }
@@ -78,6 +87,9 @@ class _HomePageState extends State<HomePage> {
             _totalData['level5_n']++;
           }
         }
+      }
+      if (needFlag > 0) {
+        _totalData['need_w']++;
       }
     }
     debugPrint(_totalData.toString());
