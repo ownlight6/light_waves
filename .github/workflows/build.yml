@@ -1,0 +1,64 @@
+name: Build Windows App
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish to GitHub Releases?'
+        type: boolean
+        default: false
+      version:
+        description: 'Release version (e.g. 1.0.0), required if publishing'
+        type: string
+        default: ''
+
+jobs:
+  build:
+    name: Build & Package
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.0'
+          channel: 'stable'
+
+      - name: Enable Windows
+        run: flutter config --enable-windows-desktop
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Release
+        run: flutter build windows --release
+
+      - name: Package ZIP
+        shell: pwsh
+        run: |
+          $buildDir = "${{ github.workspace }}\build\windows\x64\runner\Release"
+          $zipPath = "${{ github.workspace }}\LIGHT_WAVE_Windows.zip"
+          Compress-Archive -Path "$buildDir\*" -DestinationPath $zipPath
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LIGHT_WAVE_Windows
+          path: LIGHT_WAVE_Windows.zip
+
+      - name: Create Release
+        if: ${{ github.event.inputs.publish_release == 'true' && github.event.inputs.version != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: v${{ github.event.inputs.version }}
+          files: LIGHT_WAVE_Windows.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -36,6 +36,50 @@ class _GachaPageState extends State<GachaPage> {
     return !_gachaSetting.values.contains('');
   }
 
+  /// 解析抽卡链接，提取请求参数
+  /// 参考 Rust 代码的 get_param_from_logfile 逻辑，
+  /// 从 URL 中提取抽卡记录 API 所需的参数。
+  ///
+  /// 支持两种格式：
+  /// 1. 参数在主 URL query 中: https://...?svr_id=...&player_id=...
+  /// 2. 参数在 hash fragment 中（游戏官方格式）:
+  ///    https://...#/record?svr_id=...&player_id=...
+  ///
+  /// 会自动过滤公告链接 (/announcement/) 等非抽卡链接。
+  Map<String, String> _parseGachaUrl(String url) {
+    final trimmed = url.trim();
+    final uri = Uri.parse(trimmed);
+
+    // 拒绝公告链接等非抽卡链接
+    if (uri.path.contains('/announcement/') ||
+        uri.path.contains('/announce/')) {
+      throw const FormatException(
+        '检测到公告链接，请复制抽卡记录页面的链接（包含 /gacha/ 路径）',
+      );
+    }
+
+    String? queryString;
+
+    // 优先检查 hash fragment 中的参数（游戏官方链接格式）
+    // 官方链接形如: https://aki-gm-resources.aki-game.com/aki/gacha/index.html#/record?svr_id=...&...
+    if (uri.hasFragment && uri.fragment.contains('?')) {
+      queryString = uri.fragment.split('?').last;
+    }
+    // 其次检查主 URL 的 query 参数
+    if (queryString == null || queryString.isEmpty) {
+      if (uri.hasQuery) {
+        queryString = uri.query;
+      }
+    }
+
+    if (queryString == null || queryString.isEmpty) {
+      throw const FormatException('未找到有效的查询参数，请检查是否完整复制了浏览器地址栏中的链接');
+    }
+
+    // 使用 Uri.splitQueryString 正确解码 URL 编码的参数
+    return Uri.splitQueryString(queryString);
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
@@ -71,15 +115,38 @@ class _GachaPageState extends State<GachaPage> {
                   onPressed: _url.isNotEmpty
                       ? () async {
                           try {
-                            _url.split('?')[1].split('&').forEach((ele) {
-                              var key = ele.split('=')[0];
-                              var value = ele.split('=')[1];
-                              setState(() {
-                                if (_gachaSetting.containsKey(key)) {
-                                  _gachaSetting[key] = value;
-                                }
-                              });
+                            final params = _parseGachaUrl(_url);
+
+                            // 验证必需参数（参考 Rust RequestParam::init）
+                            final requiredKeys = [
+                              'player_id',
+                              'svr_id',
+                              'record_id',
+                              'resources_id',
+                            ];
+                            for (final key in requiredKeys) {
+                              if (!params.containsKey(key) ||
+                                  params[key]!.isEmpty) {
+                                throw FormatException('缺少必需参数: $key，请确认链接是否完整');
+                              }
+                            }
+
+                            // 更新设置
+                            setState(() {
+                              _gachaSetting['player_id'] =
+                                  params['player_id']!;
+                              _gachaSetting['svr_id'] =
+                                  params['svr_id']!;
+                              _gachaSetting['record_id'] =
+                                  params['record_id']!;
+                              _gachaSetting['resources_id'] =
+                                  params['resources_id']!;
+                              _gachaSetting['lang'] =
+                                  params['lang'] ?? 'zh-Hans';
+                              _gachaSetting['svr_area'] =
+                                  params['svr_area'] ?? 'cn';
                             });
+
                             setting.put(SettingKey.gachaUrl, _url);
                             setting.put(
                               SettingKey.gachaSetting,
@@ -111,7 +178,11 @@ class _GachaPageState extends State<GachaPage> {
                               builder: (context) {
                                 return CupertinoAlertDialog(
                                   title: const Text('解析失败'),
-                                  content: const Text('请检查链接是否正确'),
+                                  content: Text(
+                                    e is FormatException
+                                        ? e.message
+                                        : '请检查链接是否正确，或直接复制完整的浏览器地址栏链接',
+                                  ),
                                   actions: [
                                     CupertinoDialogAction(
                                       child: const Text('确定'),

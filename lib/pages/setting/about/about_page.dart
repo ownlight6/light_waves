@@ -50,7 +50,7 @@ class AboutPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 5),
-                  const Text('一款极简 Ios Design 鸣潮抽卡分析应用。'),
+                  const Text('一款极简 Cupertino Design 鸣潮抽卡分析应用。'),
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -59,13 +59,6 @@ class AboutPage extends StatelessWidget {
                       SizedBox(height: 10),
                       Text(
                         '版本：${WaveConfig.appVersion}',
-                        style: TextStyle(
-                          fontSize: 14,
-                        ),
-                      ),
-                      SizedBox(height: 5),
-                      Text(
-                        "交流群：${WaveConfig.qqGroup}",
                         style: TextStyle(
                           fontSize: 14,
                         ),

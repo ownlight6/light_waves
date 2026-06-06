@@ -129,7 +129,11 @@ class _HomePageState extends State<HomePage> {
 
   // 获取抽卡记录
   Future _getData() async {
-    final Map data = await Wave.gachaRecord(_params);
+    // 参考 Rust 代码：传入 svrArea 以选择正确的 API 端点（.com 或 .net）
+    final Map data = await Wave.gachaRecord(
+      _params,
+      svrArea: _gachaSetting['svr_area'] ?? 'cn',
+    );
     if (data['message'] == 'success') {
       setState(() {
         _list = data['data'];
@@ -366,6 +370,8 @@ class _HomePageState extends State<HomePage> {
         "cardPoolId": _gachaSetting["resources_id"],
         "serverId": _gachaSetting["svr_id"],
         "recordId": _gachaSetting["record_id"],
+        // 参考 Rust 代码：使用 URL 中的 lang 参数，默认 zh-Hans
+        "languageCode": _gachaSetting['lang'] ?? 'zh-Hans',
       };
     });
     if (showGachaSetting()) {

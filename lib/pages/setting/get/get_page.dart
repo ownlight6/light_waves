@@ -54,17 +54,31 @@ class _GetPageState extends State<GetPage> {
       File file = File(filePath);
       // 读取文件内容
       String content = await file.readAsString();
-      // 正则表达式提取url字段
+      // 正则表达式提取url字段（日志中可能包含多个URL：公告链接、抽卡链接等）
       final regex = RegExp(r',"url":"(.*?)","transparent":true');
-      final match = regex.firstMatch(content);
-      final url = match?.group(1).toString() ?? '';
-      if (url.isEmpty) {
+      // 使用 allMatches 找到所有URL，过滤出抽卡记录链接（包含 /gacha/ 路径）
+      final allMatches = regex.allMatches(content).toList();
+      final allUrls = allMatches
+          .map((m) => m.group(1)?.toString() ?? '')
+          .where((u) => u.isNotEmpty)
+          .toList();
+      // 只取抽卡链接（包含 /gacha/），排除公告链接（/announcement/）
+      final gachaUrl = allUrls.cast<String?>().firstWhere(
+            (u) => u!.contains('/gacha/'),
+            orElse: () => null,
+          ) ??
+          '';
+
+      if (gachaUrl.isEmpty) {
+        final message = allUrls.isEmpty
+            ? '未在日志中找到任何链接，请确认已在游戏中打开过唤取记录页面'
+            : '日志中找到的是公告链接，请重新打开游戏的唤取记录页面后重试';
         showCupertinoDialog(
           context: context,
           builder: (context) {
             return CupertinoAlertDialog(
               title: const Text('未解析到链接'),
-              content: const Text('请遵循步骤，重新获取链接'),
+              content: Text(message),
               actions: [
                 CupertinoDialogAction(
                   child: const Text('确定'),
@@ -79,7 +93,7 @@ class _GetPageState extends State<GetPage> {
         return;
       }
       setState(() {
-        _gachaUrl = match?.group(1).toString() ?? '';
+        _gachaUrl = gachaUrl;
       });
     } catch (e) {
       debugPrint('Error reading file: $e');
