@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:light_waves/config/hive.dart';
 import 'package:light_waves/constant/common.dart';
+import 'package:light_waves/service/gacha_storage.dart';
 
 class GachaPage extends StatefulWidget {
   const GachaPage({super.key});
@@ -152,6 +153,8 @@ class _GachaPageState extends State<GachaPage> {
                               SettingKey.gachaSetting,
                               jsonEncode(_gachaSetting),
                             );
+                            // 清除旧缓存，下次首页加载时会重新拉取并存储
+                            await GachaStorage.clearAll();
                             showCupertinoDialog(
                               context: context,
                               builder: (context) {
@@ -235,13 +238,15 @@ class _GachaPageState extends State<GachaPage> {
                       color: CupertinoColors.white,
                     ),
                   ),
-                  onPressed: () {
+                  onPressed: () async {
                     setState(() {
                       _url = '';
                       _gachaSetting = {...gachaSetting};
                     });
                     textController.text = '';
-                    HiveData.setting.clear();
+                    await HiveData.setting.delete(SettingKey.gachaUrl);
+                    await HiveData.setting.delete(SettingKey.gachaSetting);
+                    await GachaStorage.clearAll();
                     showCupertinoDialog(
                       context: context,
                       builder: (context) {

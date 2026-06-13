@@ -8,6 +8,7 @@ import 'package:light_waves/pages/home/home_page.dart';
 import 'package:light_waves/pages/setting/about/about_page.dart';
 import 'package:light_waves/pages/setting/gacha/gacha_page.dart';
 import 'package:light_waves/pages/setting/get/get_page.dart';
+import 'package:light_waves/pages/setting/pool_filter/pool_filter_page.dart';
 import 'package:light_waves/pages/setting/setting_page.dart';
 import 'package:light_waves/provider/theme.dart';
 import 'package:provider/provider.dart';
@@ -80,6 +81,7 @@ class MyApp extends StatelessWidget {
         '/gacha_page': (context) => const GachaPage(),
         '/about_page': (context) => const AboutPage(),
         '/get_page': (context) => const GetPage(),
+        '/pool_filter_page': (context) => const PoolFilterPage(),
       },
     );
   }

@@ -20,17 +20,28 @@ class _AnalysisCardState extends State<AnalysisCard> {
   bool hideTotal = false;
   // 隐藏卡池数据
   bool hideCardPool = false;
-  // 卡池类型
-  final cardPool = ['限定池', '专武池', '常驻池', '常驻池', '常驻池', '常驻池'];
+  // 卡池类型（poolId → 显示名称）
+  static const cardPool = {
+    1: '限定池',
+    2: '专武池',
+    3: '常驻池',
+    4: '常驻池',
+    5: '常驻池',
+    6: '常驻池',
+    8: '新旅池',
+    9: '新旅池',
+    10: '联动池',
+    11: '联动池',
+  };
 
   @override
   Widget build(BuildContext context) {
     // 渲染卡池隐藏后额外标题
     Widget renderPoolHideOtherTitle() {
       String key = 'num_n';
-      if (widget.index == 1) {
+      if (widget.index == 1 || widget.index == 10) {
         key = 'num_c';
-      } else if (widget.index == 2) {
+      } else if (widget.index == 2 || widget.index == 11) {
         key = 'num_w';
       }
       return Text(
@@ -53,7 +64,7 @@ class _AnalysisCardState extends State<AnalysisCard> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                cardPool[widget.index - 1],
+                cardPool[widget.index] ?? '',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
@@ -83,7 +94,7 @@ class _AnalysisCardState extends State<AnalysisCard> {
         ),
         children: hideCardPool
             ? [
-                if (widget.index == 1)
+                if (widget.index == 1 || widget.index == 10)
                   Column(
                     children: [
                       CupertinoListTile(
@@ -134,7 +145,7 @@ class _AnalysisCardState extends State<AnalysisCard> {
                       ),
                     ],
                   ),
-                if (widget.index == 2)
+                if (widget.index == 2 || widget.index == 11)
                   Column(
                     children: [
                       CupertinoListTile(
@@ -167,7 +178,7 @@ class _AnalysisCardState extends State<AnalysisCard> {
                       ),
                     ],
                   ),
-                if (![1, 2].contains(widget.index))
+                if (![1, 2, 10, 11].contains(widget.index))
                   Column(
                     children: [
                       CupertinoListTile(

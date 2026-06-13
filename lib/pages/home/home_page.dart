@@ -9,6 +9,7 @@ import 'package:light_waves/config/hive.dart';
 import 'package:light_waves/constant/common.dart';
 import 'package:light_waves/pages/home/analysis_card.dart';
 import 'package:light_waves/provider/theme.dart';
+import 'package:light_waves/service/gacha_storage.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -20,6 +21,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   Box setting = HiveData.setting;
+  // 首页可见的卡池列表
+  List _visibleCardPoolType = [];
   // 抽卡设置
   Map<String, dynamic> _gachaSetting = {...gachaSetting};
   // 请求参数
@@ -31,34 +34,49 @@ class _HomePageState extends State<HomePage> {
   // tab选择器
   int _selected = 1;
   // 处理后的抽卡数据
-  final List _allList = [];
+  List _allList = [];
   // 图片
   List imgs = [];
+  // 是否正在从 API 刷新
+  bool _isRefreshing = false;
   // 总体分析数据
-  final Map _totalData = {
-    'num': 0, // 总抽数
-    'num_c': 0, // 限定池抽数
-    'num_w': 0, // 专武池抽数
-    'num_n': 0, // 常驻池抽数
-    'level5_c': 0, // 限定池五星角色数量
-    'level5_c_up': 0, // 限定池五星UP数量
-    'level5_c_normal': 0, // 限定池五星常驻数量
-    'level5_w': 0, // 专武池五星武器数量 - 不歪
-    'level5_n': 0, // 常驻池五星数量
-    'need_w': 0, // 想要抽到的限定数量
-    'need_n': 0, // 限定歪的次数
+  Map _totalData = {
+    'num': 0,
+    'num_c': 0,
+    'num_w': 0,
+    'num_n': 0,
+    'level5_c': 0,
+    'level5_c_up': 0,
+    'level5_c_normal': 0,
+    'level5_w': 0,
+    'level5_n': 0,
+    'need_w': 0,
+    'need_n': 0,
   };
 
   // 分析抽卡数据
   void _analysisData() {
+    _totalData = {
+      'num': 0,
+      'num_c': 0,
+      'num_w': 0,
+      'num_n': 0,
+      'level5_c': 0,
+      'level5_c_up': 0,
+      'level5_c_normal': 0,
+      'level5_w': 0,
+      'level5_n': 0,
+      'need_w': 0,
+      'need_n': 0,
+    };
     for (int i = 0; i < _allList.length; i++) {
       List pool = _allList[i]['list'];
+      final poolId = _allList[i]['poolId'] as int;
       int needFlag = 0;
       for (int j = 0; j < pool.length; j++) {
         Map stage = pool[j];
         _totalData['num'] += stage['flag'];
-        if (i == 0) {
-          // 限定池
+        if (poolId == 1 || poolId == 10) {
           _totalData['num_c'] += stage['flag'];
           if (stage['qualityLevel'] == 5) {
             if (defaultFiveStar.contains(stage['resourceId'])) {
@@ -74,14 +92,12 @@ class _HomePageState extends State<HomePage> {
             }
             _totalData['level5_c']++;
           }
-        } else if (i == 1) {
-          // 专武池
+        } else if (poolId == 2 || poolId == 11) {
           _totalData['num_w'] += stage['flag'];
           if (stage['qualityLevel'] == 5) {
             _totalData['level5_w']++;
           }
         } else {
-          // 常驻池
           _totalData['num_n'] += stage['flag'];
           if (stage['qualityLevel'] == 5) {
             _totalData['level5_n']++;
@@ -100,8 +116,91 @@ class _HomePageState extends State<HomePage> {
     return !_gachaSetting.values.contains('');
   }
 
+  // 处理单个池子的原始数据为带 flag 的列表
+  List _processSinglePool(List rawItems) {
+    _list = rawItems;
+    _getGachaData();
+    return _gachaList;
+  }
+
+  // 处理所有池子数据
+  void _processAllPools(Map<int, List<Map<String, dynamic>>> poolData) {
+    _allList = [];
+    for (int i = 0; i < _visibleCardPoolType.length; i++) {
+      final poolType = _visibleCardPoolType[i]['id'] as int;
+      final rawItems = poolData[poolType] ?? [];
+      debugPrint('[DEBUG] processAll $poolType rawItems=${rawItems.length}');
+      final processedList = _processSinglePool(rawItems);
+      debugPrint('[DEBUG] processAll $poolType processedList=${processedList.length} lastFlag=${processedList.isNotEmpty ? processedList.last['flag'] : '?'}');
+      _allList.add({
+        'name': _visibleCardPoolType[i]['name'],
+        'poolId': poolType,
+        'list': processedList,
+      });
+    }
+    // 确保 _selected 是可见池子的有效 ID
+    if (!_visibleCardPoolType.any((p) => p['id'] == _selected)) {
+      _selected = _visibleCardPoolType.isNotEmpty
+          ? _visibleCardPoolType[0]['id'] as int
+          : 1;
+    }
+    _analysisData();
+    if (mounted) setState(() {});
+  }
+
+  // 从本地加载数据
+  Map<int, List<Map<String, dynamic>>> _loadLocalData() {
+    final poolData = <int, List<Map<String, dynamic>>>{};
+    for (final pool in _visibleCardPoolType) {
+      final poolId = pool['id'] as int;
+      poolData[poolId] = GachaStorage.loadPool(poolId);
+    }
+    return poolData;
+  }
+
+  /// pool ID → _allList 索引（在可见池子中的位置）
+  int _poolIdToIndex(int poolId) {
+    for (int i = 0; i < _visibleCardPoolType.length; i++) {
+      if (_visibleCardPoolType[i]['id'] == poolId) return i;
+    }
+    return 0;
+  }
+
+  // 从 API 刷新所有池子数据并合并到本地
+  Future<void> _refreshFromApi() async {
+    if (!showGachaSetting()) return;
+    setState(() => _isRefreshing = true);
+
+    try {
+      for (int i = 0; i < _visibleCardPoolType.length; i++) {
+        _params['cardPoolType'] = _visibleCardPoolType[i]['id'];
+        final Map data = await Wave.gachaRecord(
+          _params,
+          svrArea: _gachaSetting['svr_area'] ?? 'cn',
+        );
+        final poolId = _visibleCardPoolType[i]['id'] as int;
+        final poolName = _visibleCardPoolType[i]['name'] as String;
+        if (data['message'] == 'success') {
+          final newItems = (data['data'] as List?) ?? [];
+          debugPrint('[DEBUG] API $poolName(id=$poolId) 返回 ${newItems.length} 条');
+          await GachaStorage.savePool(poolId, newItems);
+          debugPrint('[DEBUG] $poolName(id=$poolId) 已保存 ${newItems.length} 条');
+        }
+      }
+      // 重新加载合并后的数据
+      final poolData = _loadLocalData();
+      _processAllPools(poolData);
+    } catch (e) {
+      debugPrint('刷新抽卡数据失败: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+      }
+    }
+  }
+
   //  处理抽卡记录
-  void _getGachaData() async {
+  void _getGachaData() {
     int flag = 0;
     List level4 = [];
     _gachaList = [];
@@ -114,7 +213,6 @@ class _HomePageState extends State<HomePage> {
         _gachaList.add({
           ..._list[i],
           'flag': flag,
-          // 'level4': level4,
         });
         flag = 0;
         level4 = [];
@@ -125,35 +223,6 @@ class _HomePageState extends State<HomePage> {
       'qualityLevel': -1,
       'flag': flag,
     });
-  }
-
-  // 获取抽卡记录
-  Future _getData() async {
-    // 参考 Rust 代码：传入 svrArea 以选择正确的 API 端点（.com 或 .net）
-    final Map data = await Wave.gachaRecord(
-      _params,
-      svrArea: _gachaSetting['svr_area'] ?? 'cn',
-    );
-    if (data['message'] == 'success') {
-      setState(() {
-        _list = data['data'];
-      });
-    }
-    _getGachaData();
-  }
-
-  // 处理得到所有抽卡数据
-  void _getAllData() async {
-    for (int i = 0; i < cardPoolType.length; i++) {
-      _params['cardPoolType'] = cardPoolType[i]['id'];
-      await _getData();
-      _allList.add({
-        'name': cardPoolType[i]['name'],
-        'list': _gachaList,
-      });
-    }
-    // 分析抽卡数据
-    _analysisData();
   }
 
   //  渲染进度条
@@ -191,12 +260,12 @@ class _HomePageState extends State<HomePage> {
 
   // 是否是角色
   bool isCharacter() {
-    return [1, 3, 5, 6].contains(_selected);
+    return [1, 3, 5, 6, 8, 10].contains(_selected);
   }
 
   // 是否为武器
   bool isWeapon() {
-    return [2, 4].contains(_selected);
+    return [2, 4, 9, 11].contains(_selected);
   }
 
   // 渲染抽卡列表
@@ -275,12 +344,12 @@ class _HomePageState extends State<HomePage> {
   // 获取tab items
   Map<int, Widget> renderGachaType() {
     Map<int, Widget> map = {};
-    for (int i = 0; i < cardPoolType.length; i++) {
-      map[cardPoolType[i]['id']] = Text(
-        cardPoolTypeMap[cardPoolType[i]['id']] as String,
+    for (int i = 0; i < _visibleCardPoolType.length; i++) {
+      final poolId = _visibleCardPoolType[i]['id'] as int;
+      map[poolId] = Text(
+        cardPoolTypeMap[poolId] as String,
         style: TextStyle(
-          color:
-              _selected == cardPoolType[i]['id'] ? CupertinoColors.white : null,
+          color: _selected == poolId ? CupertinoColors.white : null,
         ),
       );
     }
@@ -356,26 +425,76 @@ class _HomePageState extends State<HomePage> {
     imgs.addAll(list);
   }
 
+  // 从设置页返回后重新加载
+  void _reload() {
+    _loadVisiblePools();
+    _allList = List.generate(_visibleCardPoolType.length, (i) => {
+      'name': _visibleCardPoolType[i]['name'],
+      'poolId': _visibleCardPoolType[i]['id'],
+      'list': <Map<String, dynamic>>[],
+    });
+    if (_visibleCardPoolType.isNotEmpty &&
+        !_visibleCardPoolType.any((p) => p['id'] == _selected)) {
+      _selected = _visibleCardPoolType[0]['id'] as int;
+    }
+    final poolData = _loadLocalData();
+    if (poolData.values.any((list) => list.isNotEmpty)) {
+      _processAllPools(poolData);
+    } else {
+      setState(() {});
+    }
+    if (showGachaSetting()) {
+      _refreshFromApi();
+    }
+  }
+
+  // 加载首页可见池子设置
+  void _loadVisiblePools() {
+    final raw = HiveData.setting.get(
+      SettingKey.visiblePools,
+      defaultValue: jsonEncode(cardPoolType.map((p) => p['id']).toList()),
+    );
+    final visibleIds = (jsonDecode(raw) as List).map((e) => e as int).toSet();
+    _visibleCardPoolType =
+        cardPoolType.where((p) => visibleIds.contains(p['id'])).toList();
+  }
+
   @override
   void initState() {
     super.initState();
+    // 加载用户选择的可见卡池
+    _loadVisiblePools();
+    // 预填充空池子占位
+    _allList = List.generate(_visibleCardPoolType.length, (i) => {
+      'name': _visibleCardPoolType[i]['name'],
+      'poolId': _visibleCardPoolType[i]['id'],
+      'list': <Map<String, dynamic>>[],
+    });
+    if (_visibleCardPoolType.isNotEmpty) {
+      _selected = _visibleCardPoolType[0]['id'] as int;
+    }
     _gachaSetting = jsonDecode(setting.get(
       SettingKey.gachaSetting,
       defaultValue: jsonEncode(gachaSetting),
     ));
-    setState(() {
-      _params = {
-        ..._params,
-        "playerId": _gachaSetting['player_id'],
-        "cardPoolId": _gachaSetting["resources_id"],
-        "serverId": _gachaSetting["svr_id"],
-        "recordId": _gachaSetting["record_id"],
-        // 参考 Rust 代码：使用 URL 中的 lang 参数，默认 zh-Hans
-        "languageCode": _gachaSetting['lang'] ?? 'zh-Hans',
-      };
-    });
+    _params = {
+      ..._params,
+      "playerId": _gachaSetting['player_id'],
+      "cardPoolId": _gachaSetting["resources_id"],
+      "serverId": _gachaSetting["svr_id"],
+      "recordId": _gachaSetting["record_id"],
+      "languageCode": _gachaSetting['lang'] ?? 'zh-Hans',
+    };
+
+    // 1. 先从本地加载并立即显示
+    final poolData = _loadLocalData();
+    if (poolData.values.any((list) => list.isNotEmpty)) {
+      _processAllPools(poolData);
+    }
+
+    // 2. 如果已配置，后台拉取 API 并合并
     if (showGachaSetting()) {
-      _getAllData();
+      _refreshFromApi();
       _getCharacterInfo();
       _getWeaponInfo();
     }
@@ -401,8 +520,9 @@ class _HomePageState extends State<HomePage> {
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
           child: const Icon(CupertinoIcons.settings),
-          onPressed: () {
-            Navigator.of(context).pushNamed('/setting_page');
+          onPressed: () async {
+            await Navigator.of(context).pushNamed('/setting_page');
+            _reload();
           },
         ),
       ),
@@ -416,7 +536,7 @@ class _HomePageState extends State<HomePage> {
                       index: _selected,
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
                       child: CupertinoSlidingSegmentedControl(
                         groupValue: _selected,
                         thumbColor: CupertinoColors.activeBlue,
@@ -428,10 +548,17 @@ class _HomePageState extends State<HomePage> {
                         },
                       ),
                     ),
+                    if (_isRefreshing)
+                      const SizedBox(
+                        height: 3,
+                        child: LinearProgressIndicator(
+                          color: CupertinoColors.activeBlue,
+                        ),
+                      ),
                     Expanded(
                       child: ListView(
                         children: [
-                          renderGachaCate()[_selected - 1],
+                          renderGachaCate()[_poolIdToIndex(_selected)],
                         ],
                       ),
                     ),

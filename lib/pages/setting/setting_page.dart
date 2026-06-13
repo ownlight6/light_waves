@@ -81,6 +81,13 @@ class _SettingPageState extends State<SettingPage> {
                     ),
                   ),
                 CupertinoListTile.notched(
+                  title: const Text('首页显示卡池'),
+                  trailing: const CupertinoListTileChevron(),
+                  onTap: () {
+                    Navigator.of(context).pushNamed('/pool_filter_page');
+                  },
+                ),
+                CupertinoListTile.notched(
                   title: const Text('关于'),
                   trailing: const CupertinoListTileChevron(),
                   onTap: () {
