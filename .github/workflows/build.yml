@@ -32,11 +32,16 @@ jobs:
       - name: Enable Windows
         run: flutter config --enable-windows-desktop
 
+      - name: Setup MSVC (VS 2022)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Install Dependencies
         run: flutter pub get
 
       - name: Build Release
-        run: flutter build windows --release
+        run: flutter build windows --release --cmake-options="-GVisual Studio 17 2022 -A x64"
 
       - name: Package ZIP
         shell: pwsh
