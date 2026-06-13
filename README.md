@@ -45,31 +45,7 @@
 
 1. 从 [Releases](../../releases) 页面下载最新的 `light_waves_windows.zip`
 2. 解压后运行 `light_waves.exe`
-3. 应用将以 400×800 小窗置顶显示，方便边玩边看
-
-### 获取抽卡链接
-
-根据 Rust 参考实现（鸣潮日志读取逻辑）：
-
-1. 打开游戏，进入 **唤取记录** 页面
-2. 在应用中进入 **设置 → 获取链接**
-3. 填入桌面鸣潮快捷方式的「目标」路径（右键快捷方式 → 属性 → 快捷方式 → 目标）
-4. 点击「获取」，应用自动从游戏日志中提取抽卡链接
-5. 复制链接，粘贴到 **设置 → 设置链接** 中即可
-
-> 📌 也支持手动粘贴浏览器地址栏中复制的完整抽卡记录页面链接。
-
----
-
-## 🛠 技术栈
-
-| 技术                                                      | 用途             |
-| --------------------------------------------------------- | ---------------- |
-| [Flutter](https://flutter.dev/)                           | 跨平台 UI 框架   |
-| [Dio](https://pub.dev/packages/dio)                       | HTTP 网络请求    |
-| [Hive](https://pub.dev/packages/hive_flutter)             | 本地键值存储     |
-| [Provider](https://pub.dev/packages/provider)             | 状态管理         |
-| [window_manager](https://pub.dev/packages/window_manager) | Windows 窗口控制 |
+3. 应用将以 400×800 小窗置顶显示
 
 ---
 
